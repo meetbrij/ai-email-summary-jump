@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@14:*)",
+      "Bash(npm install:*)",
+      "Bash(cat:*)",
+      "Bash(npm run build:*)",
+      "Bash(curl:*)",
+      "Bash(node -e:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npx prisma:*)",
+      "Bash(createdb:*)",
+      "Bash(echo:*)",
+      "Bash(unset:*)",
+      "Bash(psql:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
