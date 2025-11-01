@@ -11,7 +11,7 @@ function createFilteredAdapter(): Adapter {
 
   return {
     ...baseAdapter,
-    linkAccount: async (account) => {
+    linkAccount: async (account: any) => {
       // Remove fields that aren't in our Prisma schema
       const { refresh_token_expires_in, ...filteredAccount } = account as any;
 
@@ -47,6 +47,87 @@ export const authOptions: NextAuthOptions = {
         session.user.id = user.id;
       }
       return session;
+    },
+    async signIn({ user, account, profile }) {
+      console.log('📍 SIGNIN CALLBACK FIRED:', {
+        userId: user?.id,
+        userEmail: user?.email,
+        provider: account?.provider,
+        hasRefreshToken: !!account?.refresh_token,
+        hasAccessToken: !!account?.access_token,
+        accountKeys: account ? Object.keys(account) : [],
+      });
+
+      // When using database sessions, the account object is only available during OAuth callback
+      // For existing users signing in, we need to fetch the Account from database
+      try {
+        if (!user?.id || !user?.email) {
+          console.log('⚠️ No user ID or email in signIn callback');
+          return true;
+        }
+
+        // Fetch the Google Account record from database
+        const googleAccount = await prisma.account.findFirst({
+          where: {
+            userId: user.id,
+            provider: 'google',
+          },
+        });
+
+        if (!googleAccount || !googleAccount.refresh_token) {
+          console.log('⚠️ No Google account or refresh token found for user');
+          return true;
+        }
+
+        console.log('📍 SIGNIN CALLBACK - Creating/updating GmailAccount with stored tokens');
+
+        // Use the refresh token from the database (it's already stored by the adapter)
+        // We need to re-encrypt it with our encryption key
+        const encryptedRefreshToken = encrypt(googleAccount.refresh_token);
+
+        // Check if this Gmail account is already connected
+        const existingGmailAccount = await prisma.gmailAccount.findFirst({
+          where: {
+            userId: user.id,
+            email: user.email,
+          },
+        });
+
+        if (existingGmailAccount) {
+          // Update existing account
+          await prisma.gmailAccount.update({
+            where: { id: existingGmailAccount.id },
+            data: {
+              refreshToken: encryptedRefreshToken,
+              accessToken: googleAccount.access_token || null,
+              expiresAt: googleAccount.expires_at
+                ? new Date(googleAccount.expires_at * 1000)
+                : null,
+              isActive: true,
+            },
+          });
+          console.log('✅ Updated existing GmailAccount');
+        } else {
+          // Create new Gmail account record
+          await prisma.gmailAccount.create({
+            data: {
+              userId: user.id,
+              email: user.email,
+              refreshToken: encryptedRefreshToken,
+              accessToken: googleAccount.access_token || null,
+              expiresAt: googleAccount.expires_at
+                ? new Date(googleAccount.expires_at * 1000)
+                : null,
+              isActive: true,
+            },
+          });
+          console.log('✅ Created new GmailAccount');
+        }
+      } catch (error) {
+        console.error('❌ Error in signIn callback:', error);
+      }
+
+      return true; // Always allow sign-in to proceed
     },
     async redirect({ url, baseUrl }) {
       console.log('📍 REDIRECT CALLBACK:', { url, baseUrl });

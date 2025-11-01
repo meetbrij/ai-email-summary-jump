@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
-import { fetchNewEmails } from '@/lib/gmail';
+import { fetchNewEmails, archiveEmail } from '@/lib/gmail';
 import { extractUnsubscribeInfo } from '@/lib/unsubscribe-detector';
 import { classifyEmail, summarizeEmail } from '@/lib/openai';
 
@@ -125,6 +125,14 @@ export async function POST(req: NextRequest) {
                 archived: false,
               },
             });
+
+            // Archive email in Gmail (remove from INBOX)
+            try {
+              await archiveEmail(account.id, emailData.gmailId);
+            } catch (archiveError) {
+              console.error(`Failed to archive email ${emailData.gmailId} in Gmail:`, archiveError);
+              // Continue even if archive fails
+            }
 
             totalNewEmails++;
           } catch (error: any) {

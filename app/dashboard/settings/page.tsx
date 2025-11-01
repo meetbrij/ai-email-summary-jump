@@ -13,9 +13,11 @@ import {
   RefreshCw,
   CheckCircle,
   XCircle,
+  LogOut,
 } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
+import { signOut, signIn } from 'next-auth/react';
 
 interface GmailAccount {
   id: string;
@@ -40,21 +42,14 @@ export default function SettingsPage() {
     },
   });
 
-  const connectMutation = useMutation({
-    mutationFn: async () => {
-      const res = await fetch('/api/gmail/connect');
-      if (!res.ok) throw new Error('Failed to initiate connection');
-      return res.json();
-    },
-    onSuccess: (data) => {
-      if (data.authUrl) {
-        window.location.href = data.authUrl;
-      }
-    },
-    onError: () => {
-      toast.error('Failed to connect Gmail account');
-    },
-  });
+  const handleConnectAccount = async () => {
+    // Sign out current session and redirect to login with Google OAuth
+    // This ensures a fresh OAuth flow for adding the Gmail account
+    await signOut({ redirect: false });
+    await signIn('google', {
+      callbackUrl: '/dashboard/settings',
+    });
+  };
 
   const deleteMutation = useMutation({
     mutationFn: async (accountId: string) => {
@@ -140,8 +135,7 @@ export default function SettingsPage() {
                 </CardDescription>
               </div>
               <Button
-                onClick={() => connectMutation.mutate()}
-                disabled={connectMutation.isPending}
+                onClick={handleConnectAccount}
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Account
@@ -226,8 +220,7 @@ export default function SettingsPage() {
                   No Gmail accounts connected yet
                 </p>
                 <Button
-                  onClick={() => connectMutation.mutate()}
-                  disabled={connectMutation.isPending}
+                  onClick={handleConnectAccount}
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   Connect Your First Account
@@ -238,7 +231,7 @@ export default function SettingsPage() {
         </Card>
 
         {/* Sync Settings */}
-        <Card>
+        <Card className="mb-6">
           <CardHeader>
             <CardTitle>Sync Settings</CardTitle>
             <CardDescription>
@@ -294,6 +287,35 @@ export default function SettingsPage() {
                   className="h-4 w-4 rounded border-gray-300"
                 />
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Account Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Account</CardTitle>
+            <CardDescription>
+              Manage your account settings
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <div>
+                <h3 className="font-medium text-gray-900 dark:text-white mb-1">
+                  Sign out
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Sign out of your account
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => signOut({ callbackUrl: '/login' })}
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Logout
+              </Button>
             </div>
           </CardContent>
         </Card>

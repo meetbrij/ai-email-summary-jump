@@ -11,12 +11,10 @@ import {
   Inbox,
   Archive,
   Tag,
-  TrendingUp,
   RefreshCw,
   Settings,
-  LogOut
+  TrendingUp
 } from 'lucide-react';
-import { signOut } from 'next-auth/react';
 import Link from 'next/link';
 
 interface DashboardStats {
@@ -43,7 +41,6 @@ interface Category {
 
 export default function DashboardPage() {
   const [isSyncing, setIsSyncing] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
 
   const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
     queryKey: ['dashboard-stats'],
@@ -77,20 +74,6 @@ export default function DashboardPage() {
     }
   };
 
-  const handleProcess = async () => {
-    setIsProcessing(true);
-    try {
-      const res = await fetch('/api/process', { method: 'POST' });
-      if (!res.ok) throw new Error('Process failed');
-      // Refresh stats after processing
-      window.location.reload();
-    } catch (error) {
-      console.error('Process error:', error);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
   if (statsLoading || categoriesLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -116,21 +99,12 @@ export default function DashboardPage() {
             <div className="flex items-center gap-3">
               <Button
                 onClick={handleSync}
-                disabled={isSyncing || isProcessing}
+                disabled={isSyncing}
                 variant="outline"
                 size="sm"
               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
                 {isSyncing ? 'Syncing...' : 'Sync Emails'}
-              </Button>
-              <Button
-                onClick={handleProcess}
-                disabled={isProcessing || isSyncing}
-                variant="outline"
-                size="sm"
-              >
-                <TrendingUp className={`h-4 w-4 mr-2 ${isProcessing ? 'animate-spin' : ''}`} />
-                {isProcessing ? 'Processing...' : 'Process Emails'}
               </Button>
               <Link href="/dashboard/settings">
                 <Button variant="outline" size="sm">
@@ -138,14 +112,6 @@ export default function DashboardPage() {
                   Settings
                 </Button>
               </Link>
-              <Button
-                onClick={() => signOut({ callbackUrl: '/login' })}
-                variant="outline"
-                size="sm"
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                Logout
-              </Button>
             </div>
           </div>
         </div>

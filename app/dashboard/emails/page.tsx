@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,10 +15,12 @@ import {
   ChevronLeft,
   Calendar,
   User,
-  Archive,
-  ArchiveRestore,
+  Trash2,
+  CheckSquare,
+  Square,
 } from 'lucide-react';
 import Link from 'next/link';
+import toast from 'react-hot-toast';
 
 interface Email {
   id: string;
@@ -47,8 +49,9 @@ interface Category {
 export default function EmailsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [showArchived, setShowArchived] = useState(false);
-  const [selectedEmail, setSelectedEmail] = useState<string | null>(null);
+  const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set());
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const queryClient = useQueryClient();
 
   const { data: categories } = useQuery<Category[]>({
     queryKey: ['categories'],
@@ -60,12 +63,12 @@ export default function EmailsPage() {
   });
 
   const { data: emails, isLoading } = useQuery<Email[]>({
-    queryKey: ['emails', selectedCategory, showArchived],
+    queryKey: ['emails', selectedCategory],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (selectedCategory !== 'all') params.set('categoryId', selectedCategory);
       if (selectedCategory === 'uncategorized') params.set('uncategorized', 'true');
-      params.set('archived', showArchived.toString());
+      params.set('archived', 'false'); // Always show non-archived emails
 
       const res = await fetch(`/api/emails?${params.toString()}`);
       if (!res.ok) throw new Error('Failed to fetch emails');
@@ -73,19 +76,58 @@ export default function EmailsPage() {
     },
   });
 
-  const handleArchive = async (emailId: string, archived: boolean) => {
-    try {
-      const res = await fetch(`/api/emails/${emailId}/archive`, {
-        method: 'PATCH',
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (emailIds: string[]) => {
+      const res = await fetch('/api/emails/bulk-delete', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ archived }),
+        body: JSON.stringify({ emailIds }),
       });
-      if (!res.ok) throw new Error('Failed to archive email');
-      // Refresh emails list
-      window.location.reload();
-    } catch (error) {
-      console.error('Archive error:', error);
+      if (!res.ok) throw new Error('Failed to delete emails');
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['emails'] });
+      setSelectedEmails(new Set());
+      setShowDeleteConfirm(false);
+
+      if (data.warning) {
+        toast.error(data.warning);
+      } else {
+        toast.success('Emails deleted successfully from both app and Gmail');
+      }
+    },
+    onError: () => {
+      toast.error('Failed to delete emails');
+    },
+  });
+
+  const handleSelectAll = () => {
+    if (selectedEmails.size === filteredEmails?.length) {
+      setSelectedEmails(new Set());
+    } else {
+      setSelectedEmails(new Set(filteredEmails?.map((e) => e.id) || []));
     }
+  };
+
+  const handleSelectEmail = (emailId: string) => {
+    const newSelected = new Set(selectedEmails);
+    if (newSelected.has(emailId)) {
+      newSelected.delete(emailId);
+    } else {
+      newSelected.add(emailId);
+    }
+    setSelectedEmails(newSelected);
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedEmails.size > 0) {
+      setShowDeleteConfirm(true);
+    }
+  };
+
+  const confirmDelete = () => {
+    bulkDeleteMutation.mutate(Array.from(selectedEmails));
   };
 
   const filteredEmails = emails?.filter((email) => {
@@ -171,29 +213,93 @@ export default function EmailsPage() {
                     ))}
                   </Select>
                 </div>
-
-                {/* Show Archived */}
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="showArchived"
-                    checked={showArchived}
-                    onChange={(e) => setShowArchived(e.target.checked)}
-                    className="rounded border-gray-300"
-                  />
-                  <label
-                    htmlFor="showArchived"
-                    className="text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >
-                    Show Archived
-                  </label>
-                </div>
               </CardContent>
             </Card>
           </div>
 
           {/* Email List */}
           <div className="lg:col-span-3">
+            {/* Bulk Actions Toolbar */}
+            {selectedEmails.size > 0 && (
+              <Card className="mb-4 bg-blue-50 dark:bg-blue-900 border-blue-200 dark:border-blue-700">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                      {selectedEmails.size} email(s) selected
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setSelectedEmails(new Set())}
+                      >
+                        Clear Selection
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={handleBulkDelete}
+                        disabled={bulkDeleteMutation.isPending}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete Selected
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Delete Confirmation Dialog */}
+            {showDeleteConfirm && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <Card className="max-w-md w-full mx-4">
+                  <CardHeader>
+                    <CardTitle>Confirm Delete</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">
+                      Are you sure you want to delete {selectedEmails.size} email(s)?
+                      This will remove them from both the app and Gmail (move to trash).
+                    </p>
+                    <div className="flex items-center gap-2 justify-end">
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowDeleteConfirm(false)}
+                        disabled={bulkDeleteMutation.isPending}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={confirmDelete}
+                        disabled={bulkDeleteMutation.isPending}
+                      >
+                        {bulkDeleteMutation.isPending ? 'Deleting...' : 'Delete'}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Select All Checkbox */}
+            {filteredEmails && filteredEmails.length > 0 && (
+              <div className="mb-4 flex items-center gap-2 p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                <button
+                  onClick={handleSelectAll}
+                  className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300"
+                >
+                  {selectedEmails.size === filteredEmails.length ? (
+                    <CheckSquare className="h-5 w-5 text-blue-600" />
+                  ) : (
+                    <Square className="h-5 w-5" />
+                  )}
+                  Select All
+                </button>
+              </div>
+            )}
+
             {isLoading ? (
               <div className="flex justify-center py-12">
                 <Spinner size="lg" />
@@ -203,85 +309,74 @@ export default function EmailsPage() {
                 {filteredEmails.map((email) => (
                   <Card
                     key={email.id}
-                    className={`cursor-pointer hover:shadow-lg transition-shadow ${
-                      selectedEmail === email.id ? 'ring-2 ring-blue-500' : ''
-                    }`}
-                    onClick={() => setSelectedEmail(email.id)}
+                    className="hover:shadow-lg transition-shadow"
                   >
                     <CardContent className="p-6">
-                      <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-start gap-4">
+                        {/* Checkbox */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSelectEmail(email.id);
+                          }}
+                          className="mt-1"
+                        >
+                          {selectedEmails.has(email.id) ? (
+                            <CheckSquare className="h-5 w-5 text-blue-600" />
+                          ) : (
+                            <Square className="h-5 w-5 text-gray-400" />
+                          )}
+                        </button>
+
+                        {/* Email Content */}
                         <div className="flex-1">
-                          <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
-                            {email.subject}
-                          </h3>
-                          <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
-                            <div className="flex items-center gap-1">
-                              <User className="h-3 w-3" />
-                              {email.from}
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex-1">
+                              <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
+                                {email.subject}
+                              </h3>
+                              <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
+                                <div className="flex items-center gap-1">
+                                  <User className="h-3 w-3" />
+                                  {email.from}
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Calendar className="h-3 w-3" />
+                                  {new Date(email.receivedAt).toLocaleDateString()}
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Mail className="h-3 w-3" />
+                                  {email.gmailAccount.email}
+                                </div>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              {new Date(email.receivedAt).toLocaleDateString()}
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Mail className="h-3 w-3" />
-                              {email.gmailAccount.email}
+                            <div className="flex items-center gap-2">
+                              {email.category && (
+                                <Badge
+                                  style={{
+                                    backgroundColor: email.category.color,
+                                  }}
+                                >
+                                  {email.category.name}
+                                </Badge>
+                              )}
                             </div>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {email.category && (
-                            <Badge
-                              style={{
-                                backgroundColor: email.category.color,
-                              }}
-                            >
-                              {email.category.name}
-                            </Badge>
-                          )}
-                          {email.archived && (
-                            <Badge variant="secondary">Archived</Badge>
-                          )}
-                        </div>
-                      </div>
 
-                      {email.summary && (
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
-                          {email.summary}
-                        </p>
-                      )}
+                          {email.summary && (
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
+                              {email.summary}
+                            </p>
+                          )}
 
-                      <div className="flex items-center gap-2 pt-3 border-t border-gray-200 dark:border-gray-700">
-                        <Link href={`/dashboard/emails/${email.id}`}>
-                          <Button size="sm" variant="outline">
-                            View Details
-                          </Button>
-                        </Link>
-                        {email.archived ? (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleArchive(email.id, false);
-                            }}
-                          >
-                            <ArchiveRestore className="h-4 w-4 mr-2" />
-                            Unarchive
-                          </Button>
-                        ) : (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleArchive(email.id, true);
-                            }}
-                          >
-                            <Archive className="h-4 w-4 mr-2" />
-                            Archive
-                          </Button>
-                        )}
+                          <div className="flex items-center gap-2 pt-3 border-t border-gray-200 dark:border-gray-700">
+                            <Link href={`/dashboard/emails/${email.id}`}>
+                              <Button size="sm" variant="outline">
+                                View Details
+                              </Button>
+                            </Link>
+                          </div>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>

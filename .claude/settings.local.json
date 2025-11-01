@@ -12,7 +12,8 @@
       "Bash(createdb:*)",
       "Bash(echo:*)",
       "Bash(unset:*)",
-      "Bash(psql:*)"
+      "Bash(psql:*)",
+      "Bash(lsof:*)"
     ],
     "deny": [],
     "ask": []
