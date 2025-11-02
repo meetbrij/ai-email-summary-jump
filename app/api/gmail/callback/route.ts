@@ -17,13 +17,16 @@ export async function GET(req: NextRequest) {
     const state = searchParams.get('state');
     const error = searchParams.get('error');
 
+    // Get base URL for redirects (use NEXTAUTH_URL in production)
+    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+
     // Handle OAuth errors
     if (error) {
       console.error('OAuth error:', error);
       return NextResponse.redirect(
         new URL(
           `/dashboard/accounts?error=${encodeURIComponent('OAuth authorization failed')}`,
-          req.url
+          baseUrl
         )
       );
     }
@@ -33,7 +36,7 @@ export async function GET(req: NextRequest) {
         new URL(
           '/dashboard/accounts?error=' +
             encodeURIComponent('Missing authorization code or state'),
-          req.url
+          baseUrl
         )
       );
     }
@@ -48,7 +51,7 @@ export async function GET(req: NextRequest) {
         new URL(
           '/dashboard/accounts?error=' +
             encodeURIComponent('Invalid or expired authorization request'),
-          req.url
+          baseUrl
         )
       );
     }
@@ -58,7 +61,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(
         new URL(
           '/dashboard/accounts?error=' + encodeURIComponent('Invalid request type'),
-          req.url
+          baseUrl
         )
       );
     }
@@ -70,7 +73,7 @@ export async function GET(req: NextRequest) {
         new URL(
           '/dashboard/accounts?error=' +
             encodeURIComponent('Authorization request expired. Please try again'),
-          req.url
+          baseUrl
         )
       );
     }
@@ -92,7 +95,7 @@ export async function GET(req: NextRequest) {
             encodeURIComponent(
               'No refresh token received. Please try again and grant all permissions'
             ),
-          req.url
+          baseUrl
         )
       );
     }
@@ -107,7 +110,7 @@ export async function GET(req: NextRequest) {
         new URL(
           '/dashboard/accounts?error=' +
             encodeURIComponent('Failed to retrieve email from Google'),
-          req.url
+          baseUrl
         )
       );
     }
@@ -126,7 +129,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(
         new URL(
           '/dashboard/accounts?error=' + encodeURIComponent('User not found'),
-          req.url
+          baseUrl
         )
       );
     }
@@ -137,7 +140,7 @@ export async function GET(req: NextRequest) {
         new URL(
           '/dashboard/accounts?error=' +
             encodeURIComponent('Maximum of 5 Gmail accounts allowed'),
-          req.url
+          baseUrl
         )
       );
     }
@@ -174,7 +177,7 @@ export async function GET(req: NextRequest) {
           new URL(
             '/dashboard/accounts?success=' +
               encodeURIComponent('Gmail account reconnected successfully'),
-            req.url
+            baseUrl
           )
         );
       } else {
@@ -188,7 +191,7 @@ export async function GET(req: NextRequest) {
               encodeURIComponent(
                 `This Gmail account is already connected to another user (${existingAccount.user.email}). Each Gmail account can only be connected once.`
               ),
-            req.url
+            baseUrl
           )
         );
       }
@@ -212,16 +215,18 @@ export async function GET(req: NextRequest) {
       new URL(
         '/dashboard/accounts?success=' +
           encodeURIComponent('Gmail account added successfully'),
-        req.url
+        baseUrl
       )
     );
   } catch (error) {
     console.error('Error in /api/gmail/callback:', error);
+    // Get base URL for redirects (define here too for catch block scope)
+    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
     return NextResponse.redirect(
       new URL(
         '/dashboard/accounts?error=' +
           encodeURIComponent('Failed to add Gmail account. Please try again'),
-        req.url
+        baseUrl
       )
     );
   }
