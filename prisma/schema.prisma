@@ -62,7 +62,7 @@ model VerificationToken {
 model GmailAccount {
   id           String    @id @default(uuid())
   userId       String
-  email        String
+  email        String    @unique // Globally unique - one Gmail per system
   refreshToken String // Encrypted
   accessToken  String?
   expiresAt    DateTime?
@@ -72,7 +72,6 @@ model GmailAccount {
   user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   emails       Email[]
 
-  @@unique([userId, email])
   @@index([userId])
 }
 

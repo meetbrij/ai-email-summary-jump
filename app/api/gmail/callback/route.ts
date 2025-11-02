@@ -142,33 +142,56 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Check if this email is already connected
+    // Check if this email is already connected (globally)
     const existingAccount = await prisma.gmailAccount.findFirst({
       where: {
-        userId: user.id,
         email: userInfo.data.email,
+      },
+      include: {
+        user: {
+          select: {
+            email: true,
+          },
+        },
       },
     });
 
     if (existingAccount) {
-      // Update existing account
-      await prisma.gmailAccount.update({
-        where: { id: existingAccount.id },
-        data: {
-          refreshToken: encrypt(tokens.refresh_token),
-          accessToken: tokens.access_token || null,
-          expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
-          isActive: true,
-        },
-      });
+      // Check if it belongs to the current user
+      if (existingAccount.userId === user.id) {
+        // User is reconnecting their own Gmail account - update tokens
+        await prisma.gmailAccount.update({
+          where: { id: existingAccount.id },
+          data: {
+            refreshToken: encrypt(tokens.refresh_token),
+            accessToken: tokens.access_token || null,
+            expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
+            isActive: true,
+          },
+        });
 
-      return NextResponse.redirect(
-        new URL(
-          '/dashboard/accounts?success=' +
-            encodeURIComponent('Gmail account reconnected successfully'),
-          req.url
-        )
-      );
+        return NextResponse.redirect(
+          new URL(
+            '/dashboard/accounts?success=' +
+              encodeURIComponent('Gmail account reconnected successfully'),
+            req.url
+          )
+        );
+      } else {
+        // Gmail account is already connected to a different user - reject
+        console.error(
+          `Gmail ${userInfo.data.email} is already connected to user ${existingAccount.user.email}`
+        );
+        return NextResponse.redirect(
+          new URL(
+            '/dashboard/accounts?error=' +
+              encodeURIComponent(
+                `This Gmail account is already connected to another user (${existingAccount.user.email}). Each Gmail account can only be connected once.`
+              ),
+            req.url
+          )
+        );
+      }
     }
 
     // Create new Gmail account

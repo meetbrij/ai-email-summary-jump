@@ -49,6 +49,17 @@ interface Category {
   color: string;
 }
 
+interface GmailAccount {
+  id: string;
+  email: string;
+  isActive: boolean;
+  lastSyncedAt: string | null;
+  createdAt: string;
+  _count: {
+    emails: number;
+  };
+}
+
 interface DashboardStats {
   totalEmails: number;
   categorizedEmails: number;
@@ -71,16 +82,27 @@ function EmailsPageContent() {
   const [selectedCategory, setSelectedCategory] = useState<string>(
     searchParams.get('categoryId') || 'all'
   );
+  const [selectedAccount, setSelectedAccount] = useState<string>(
+    searchParams.get('gmailAccountId') || 'all'
+  );
   const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set());
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Sync state with URL changes (for browser back/forward navigation)
   useEffect(() => {
     const categoryId = searchParams.get('categoryId');
+    const gmailAccountId = searchParams.get('gmailAccountId');
+
     if (categoryId) {
       setSelectedCategory(categoryId);
     } else {
       setSelectedCategory('all');
+    }
+
+    if (gmailAccountId) {
+      setSelectedAccount(gmailAccountId);
+    } else {
+      setSelectedAccount('all');
     }
   }, [searchParams]);
 
@@ -102,12 +124,22 @@ function EmailsPageContent() {
     },
   });
 
+  const { data: gmailAccounts } = useQuery<GmailAccount[]>({
+    queryKey: ['gmail-accounts'],
+    queryFn: async () => {
+      const res = await fetch('/api/gmail/accounts');
+      if (!res.ok) throw new Error('Failed to fetch Gmail accounts');
+      return res.json();
+    },
+  });
+
   const { data: emails, isLoading } = useQuery<Email[]>({
-    queryKey: ['emails', selectedCategory],
+    queryKey: ['emails', selectedCategory, selectedAccount],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (selectedCategory !== 'all') params.set('categoryId', selectedCategory);
       if (selectedCategory === 'uncategorized') params.set('uncategorized', 'true');
+      if (selectedAccount !== 'all') params.set('gmailAccountId', selectedAccount);
       params.set('archived', 'false'); // Always show non-archived emails
 
       const res = await fetch(`/api/emails?${params.toString()}`);
@@ -315,6 +347,41 @@ function EmailsPageContent() {
                     {categories?.map((cat) => (
                       <option key={cat.id} value={cat.id}>
                         {cat.name}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+
+                {/* Account Filter */}
+                <div>
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
+                    Account
+                  </label>
+                  <Select
+                    value={selectedAccount}
+                    onChange={(e) => {
+                      const newValue = e.target.value;
+                      setSelectedAccount(newValue);
+
+                      // Update URL params
+                      const params = new URLSearchParams(searchParams.toString());
+                      if (newValue === 'all') {
+                        params.delete('gmailAccountId');
+                      } else {
+                        params.set('gmailAccountId', newValue);
+                      }
+
+                      // Update URL
+                      const newUrl = params.toString()
+                        ? `/dashboard/emails?${params.toString()}`
+                        : '/dashboard/emails';
+                      router.push(newUrl);
+                    }}
+                  >
+                    <option value="all">All Accounts</option>
+                    {gmailAccounts?.map((account) => (
+                      <option key={account.id} value={account.id}>
+                        {account.email} ({account._count.emails})
                       </option>
                     ))}
                   </Select>

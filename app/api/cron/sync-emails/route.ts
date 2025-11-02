@@ -67,6 +67,23 @@ export async function POST(req: NextRequest) {
     const errors: string[] = [];
     const results: any[] = [];
 
+    // Detect duplicate email addresses across accounts (should not happen with new schema)
+    const emailCounts = gmailAccounts.reduce((acc, account) => {
+      acc[account.email] = (acc[account.email] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const duplicates = Object.entries(emailCounts).filter(([_, count]) => count > 1);
+    if (duplicates.length > 0) {
+      console.error(
+        '⚠️  [CRON] WARNING: Duplicate Gmail accounts detected! This should not happen with unique email constraint:',
+        duplicates.map(([email, count]) => `${email} (${count}x)`).join(', ')
+      );
+      errors.push(
+        `Data integrity issue: Duplicate Gmail accounts found: ${duplicates.map(([email]) => email).join(', ')}`
+      );
+    }
+
     // Process each account
     for (const account of gmailAccounts) {
       try {
