@@ -1,6 +1,6 @@
 'use client';
 
-import { useSession } from 'next-auth/react';
+import { useSession, signOut } from 'next-auth/react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
@@ -10,12 +10,41 @@ import {
   User,
   Mail,
   Calendar,
+  AlertCircle,
 } from 'lucide-react';
 import Link from 'next/link';
-import { signOut } from 'next-auth/react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function SettingsPage() {
   const { data: session, status } = useSession();
+  const router = useRouter();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
+
+  // Timeout for loading state (if session doesn't load after 5 seconds)
+  useEffect(() => {
+    if (status === 'loading') {
+      const timer = setTimeout(() => {
+        setLoadingTimeout(true);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [status]);
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await signOut({
+        redirect: true,
+        callbackUrl: '/login'
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Force redirect if signOut fails
+      window.location.href = '/login';
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -53,9 +82,30 @@ export default function SettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {status === 'loading' ? (
+            {status === 'loading' && !loadingTimeout ? (
               <div className="flex justify-center py-8">
                 <Spinner size="md" />
+              </div>
+            ) : loadingTimeout ? (
+              <div className="text-center py-8">
+                <AlertCircle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
+                <p className="text-gray-600 dark:text-gray-400 mb-4">
+                  Unable to load session. This might be due to expired cookies.
+                </p>
+                <div className="flex gap-3 justify-center">
+                  <Button onClick={() => window.location.reload()}>
+                    Refresh Page
+                  </Button>
+                  <Button variant="outline" onClick={() => {
+                    // Clear all cookies and redirect to login
+                    document.cookie.split(";").forEach(function(c) {
+                      document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+                    });
+                    window.location.href = '/login';
+                  }}>
+                    Clear & Logout
+                  </Button>
+                </div>
               </div>
             ) : session?.user ? (
               <div className="flex items-start gap-6">
@@ -212,10 +262,11 @@ export default function SettingsPage() {
               </div>
               <Button
                 variant="outline"
-                onClick={() => signOut({ callbackUrl: '/login' })}
+                onClick={handleLogout}
+                disabled={isLoggingOut}
               >
                 <LogOut className="h-4 w-4 mr-2" />
-                Logout
+                {isLoggingOut ? 'Logging out...' : 'Logout'}
               </Button>
             </div>
           </CardContent>

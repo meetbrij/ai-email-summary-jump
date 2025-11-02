@@ -12,10 +12,12 @@ import {
   Trash2,
   CheckCircle,
   XCircle,
+  AlertCircle,
 } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { signOut, signIn } from 'next-auth/react';
+import { useEffect, useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 interface GmailAccount {
   id: string;
@@ -28,8 +30,30 @@ interface GmailAccount {
   };
 }
 
-export default function AccountsPage() {
+function AccountsPageContent() {
   const queryClient = useQueryClient();
+  const searchParams = useSearchParams();
+  const [isConnecting, setIsConnecting] = useState(false);
+
+  // Handle success/error messages from OAuth callback
+  useEffect(() => {
+    const success = searchParams.get('success');
+    const error = searchParams.get('error');
+
+    if (success) {
+      toast.success(success);
+      // Clear URL params
+      window.history.replaceState({}, '', '/dashboard/accounts');
+      // Refetch accounts
+      queryClient.invalidateQueries({ queryKey: ['gmail-accounts'] });
+    }
+
+    if (error) {
+      toast.error(error);
+      // Clear URL params
+      window.history.replaceState({}, '', '/dashboard/accounts');
+    }
+  }, [searchParams, queryClient]);
 
   const { data: accounts, isLoading } = useQuery<GmailAccount[]>({
     queryKey: ['gmail-accounts'],
@@ -41,12 +65,24 @@ export default function AccountsPage() {
   });
 
   const handleConnectAccount = async () => {
-    // Sign out current session and redirect to login with Google OAuth
-    // This ensures a fresh OAuth flow for adding the Gmail account
-    await signOut({ redirect: false });
-    await signIn('google', {
-      callbackUrl: '/dashboard/accounts',
-    });
+    try {
+      setIsConnecting(true);
+      // Fetch OAuth URL from custom endpoint
+      const res = await fetch('/api/gmail/add-account');
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast.error(data.error || 'Failed to initiate OAuth flow');
+        return;
+      }
+
+      // Redirect to Google OAuth
+      window.location.href = data.authUrl;
+    } catch (error) {
+      console.error('Error connecting account:', error);
+      toast.error('Failed to connect Gmail account');
+      setIsConnecting(false);
+    }
   };
 
   const deleteMutation = useMutation({
@@ -113,19 +149,40 @@ export default function AccountsPage() {
                   Gmail Accounts
                 </h1>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Connect and manage your Gmail accounts
+                  Connect and manage your Gmail accounts {accounts && `(${accounts.length}/5)`}
                 </p>
               </div>
             </div>
-            <Button onClick={handleConnectAccount}>
+            <Button
+              onClick={handleConnectAccount}
+              disabled={isConnecting || (accounts && accounts.length >= 5)}
+              title={(accounts && accounts.length >= 5) ? 'Maximum of 5 accounts reached' : ''}
+            >
               <Plus className="h-4 w-4 mr-2" />
-              Add Account
+              {isConnecting ? 'Connecting...' : 'Add Account'}
             </Button>
           </div>
         </div>
       </header>
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Account Limit Warning */}
+        {accounts && accounts.length >= 5 && (
+          <div className="mb-6 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-500 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <h3 className="font-semibold text-yellow-900 dark:text-yellow-200 mb-1">
+                  Account Limit Reached
+                </h3>
+                <p className="text-sm text-yellow-800 dark:text-yellow-300">
+                  You have reached the maximum of 5 Gmail accounts. To add a new account, please remove an existing one first.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <Card>
           <CardHeader>
             <CardTitle>Connected Accounts</CardTitle>
@@ -227,5 +284,17 @@ export default function AccountsPage() {
         </Card>
       </main>
     </div>
+  );
+}
+
+export default function AccountsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <Spinner size="lg" />
+      </div>
+    }>
+      <AccountsPageContent />
+    </Suspense>
   );
 }
