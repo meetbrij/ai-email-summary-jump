@@ -7,32 +7,20 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import {
-  Mail,
-  Inbox,
-  Archive,
   Tag,
   RefreshCw,
   Settings,
-  TrendingUp
+  TrendingUp,
+  AlertCircle,
+  Users,
+  Plus
 } from 'lucide-react';
 import Link from 'next/link';
-
-interface DashboardStats {
-  totalEmails: number;
-  categorizedEmails: number;
-  uncategorizedEmails: number;
-  archivedEmails: number;
-  categoriesCount: number;
-  gmailAccountsCount: number;
-  recentActivity: {
-    date: string;
-    count: number;
-  }[];
-}
 
 interface Category {
   id: string;
   name: string;
+  description: string;
   color: string;
   _count: {
     emails: number;
@@ -41,15 +29,6 @@ interface Category {
 
 export default function DashboardPage() {
   const [isSyncing, setIsSyncing] = useState(false);
-
-  const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
-    queryKey: ['dashboard-stats'],
-    queryFn: async () => {
-      const res = await fetch('/api/emails/stats');
-      if (!res.ok) throw new Error('Failed to fetch stats');
-      return res.json();
-    },
-  });
 
   const { data: categories, isLoading: categoriesLoading } = useQuery<Category[]>({
     queryKey: ['categories'],
@@ -64,17 +43,26 @@ export default function DashboardPage() {
     setIsSyncing(true);
     try {
       const res = await fetch('/api/sync', { method: 'POST' });
-      if (!res.ok) throw new Error('Sync failed');
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.error || 'Sync failed');
+        setIsSyncing(false);
+        return;
+      }
+
       // Refresh stats after sync
       window.location.reload();
     } catch (error) {
       console.error('Sync error:', error);
-    } finally {
+      alert('Failed to sync emails. Please try again.');
       setIsSyncing(false);
     }
   };
 
-  if (statsLoading || categoriesLoading) {
+  const canSync = (categories?.length || 0) >= 2;
+
+  if (categoriesLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Spinner size="lg" />
@@ -99,9 +87,10 @@ export default function DashboardPage() {
             <div className="flex items-center gap-3">
               <Button
                 onClick={handleSync}
-                disabled={isSyncing}
+                disabled={isSyncing || !canSync}
                 variant="outline"
                 size="sm"
+                title={!canSync ? 'Create at least 2 categories to start syncing' : ''}
               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
                 {isSyncing ? 'Syncing...' : 'Sync Emails'}
@@ -119,73 +108,39 @@ export default function DashboardPage() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Emails</CardTitle>
-              <Mail className="h-4 w-4 text-gray-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.totalEmails || 0}</div>
-              <p className="text-xs text-gray-600 dark:text-gray-400">
-                Across all accounts
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Categorized</CardTitle>
-              <Tag className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.categorizedEmails || 0}</div>
-              <p className="text-xs text-gray-600 dark:text-gray-400">
-                {stats?.totalEmails
-                  ? Math.round((stats.categorizedEmails / stats.totalEmails) * 100)
-                  : 0}% of total
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Uncategorized</CardTitle>
-              <Inbox className="h-4 w-4 text-yellow-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.uncategorizedEmails || 0}</div>
-              <p className="text-xs text-gray-600 dark:text-gray-400">
-                Need processing
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Archived</CardTitle>
-              <Archive className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.archivedEmails || 0}</div>
-              <p className="text-xs text-gray-600 dark:text-gray-400">
-                Cleaned up
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+        {/* Warning Banner for Insufficient Categories */}
+        {!canSync && (
+          <div className="mb-6 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-500 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <h3 className="font-semibold text-yellow-900 dark:text-yellow-200 mb-1">
+                  Setup Required: Create Categories
+                </h3>
+                <p className="text-sm text-yellow-800 dark:text-yellow-300 mb-3">
+                  You need at least 2 categories before syncing emails. Categories help AI organize your emails automatically.
+                </p>
+                <Link href="/dashboard/categories">
+                  <Button size="sm" variant="outline" className="border-yellow-600 text-yellow-900 dark:text-yellow-200 hover:bg-yellow-100 dark:hover:bg-yellow-900/40">
+                    <Tag className="h-4 w-4 mr-2" />
+                    Create Categories Now
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          <Link href="/dashboard/emails" className="block">
+          <Link href="/dashboard/accounts" className="block">
             <Card className="hover:shadow-lg transition-shadow cursor-pointer">
               <CardHeader>
                 <CardTitle className="flex items-center">
-                  <Inbox className="h-5 w-5 mr-2 text-blue-600" />
-                  View Emails
+                  <Users className="h-5 w-5 mr-2 text-blue-600" />
+                  View Accounts
                 </CardTitle>
-                <CardDescription>Browse and manage your emails</CardDescription>
+                <CardDescription>Manage your Gmail accounts and emails</CardDescription>
               </CardHeader>
             </Card>
           </Link>
@@ -215,50 +170,72 @@ export default function DashboardPage() {
           </Link>
         </div>
 
-        {/* Categories Overview */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Categories Overview</CardTitle>
-            <CardDescription>
-              Email distribution across your categories
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {categories && categories.length > 0 ? (
-              <div className="space-y-4">
-                {categories.map((category) => (
-                  <div
-                    key={category.id}
-                    className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="w-4 h-4 rounded-full"
-                        style={{ backgroundColor: category.color }}
-                      />
-                      <span className="font-medium text-gray-900 dark:text-white">
-                        {category.name}
+        {/* Email Categories Section */}
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+            Email Categories
+          </h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Select any category below to view your emails
+          </p>
+        </div>
+
+        {/* Categories Grid */}
+        {categories && categories.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {categories.map((category) => (
+              <Link
+                key={category.id}
+                href={`/dashboard/emails?categoryId=${category.id}`}
+                className="block"
+              >
+                <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                  <CardContent className="p-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-start gap-4">
+                        <div
+                          className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
+                          style={{ backgroundColor: category.color }}
+                        >
+                          <Tag className="h-6 w-6 text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-lg text-gray-900 dark:text-white mb-1">
+                            {category.name}
+                          </h3>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                            {category.description || `emails that talks about ${category.name.toLowerCase()}`}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                        {category._count?.emails || 0} emails
                       </span>
                     </div>
-                    <Badge variant="secondary">
-                      {category._count?.emails || 0} emails
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <Tag className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600 dark:text-gray-400 mb-4">
-                  No categories yet. Create your first category to start organizing emails.
-                </p>
-                <Link href="/dashboard/categories">
-                  <Button>Create Category</Button>
-                </Link>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <Card>
+            <CardContent className="text-center py-12">
+              <Tag className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
+                Create at least 2 categories to start organizing your emails
+              </p>
+              <Link href="/dashboard/categories">
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add New Category
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        )}
       </main>
     </div>
   );

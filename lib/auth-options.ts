@@ -45,6 +45,8 @@ export const authOptions: NextAuthOptions = {
       console.log('📍 SESSION CALLBACK:', { session, user });
       if (session.user) {
         session.user.id = user.id;
+        session.user.image = user.image;
+        session.user.createdAt = user.createdAt;
       }
       return session;
     },

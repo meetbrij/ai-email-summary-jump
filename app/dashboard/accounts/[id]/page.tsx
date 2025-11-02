@@ -1,8 +1,8 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState, useEffect } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { useParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,8 +19,6 @@ import {
   Trash2,
   CheckSquare,
   Square,
-  Inbox,
-  Tag,
 } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
@@ -49,40 +47,33 @@ interface Category {
   color: string;
 }
 
-interface DashboardStats {
-  totalEmails: number;
-  categorizedEmails: number;
-  uncategorizedEmails: number;
-  archivedEmails: number;
-  categoriesCount: number;
-  gmailAccountsCount: number;
-  recentActivity: {
-    date: string;
-    count: number;
-  }[];
+interface GmailAccount {
+  id: string;
+  email: string;
+  isActive: boolean;
+  lastSyncedAt: string | null;
+  _count?: {
+    emails: number;
+  };
 }
 
-export default function EmailsPage() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const queryClient = useQueryClient();
-
+export default function AccountEmailsPage() {
+  const params = useParams();
+  const accountId = params.id as string;
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>(
-    searchParams.get('categoryId') || 'all'
-  );
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set());
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const queryClient = useQueryClient();
 
-  // Sync state with URL changes (for browser back/forward navigation)
-  useEffect(() => {
-    const categoryId = searchParams.get('categoryId');
-    if (categoryId) {
-      setSelectedCategory(categoryId);
-    } else {
-      setSelectedCategory('all');
-    }
-  }, [searchParams]);
+  const { data: account } = useQuery<GmailAccount>({
+    queryKey: ['gmail-account', accountId],
+    queryFn: async () => {
+      const res = await fetch(`/api/gmail/accounts/${accountId}`);
+      if (!res.ok) throw new Error('Failed to fetch account');
+      return res.json();
+    },
+  });
 
   const { data: categories } = useQuery<Category[]>({
     queryKey: ['categories'],
@@ -93,22 +84,14 @@ export default function EmailsPage() {
     },
   });
 
-  const { data: stats } = useQuery<DashboardStats>({
-    queryKey: ['dashboard-stats'],
-    queryFn: async () => {
-      const res = await fetch('/api/emails/stats');
-      if (!res.ok) throw new Error('Failed to fetch stats');
-      return res.json();
-    },
-  });
-
   const { data: emails, isLoading } = useQuery<Email[]>({
-    queryKey: ['emails', selectedCategory],
+    queryKey: ['emails', accountId, selectedCategory],
     queryFn: async () => {
       const params = new URLSearchParams();
+      params.set('gmailAccountId', accountId);
       if (selectedCategory !== 'all') params.set('categoryId', selectedCategory);
       if (selectedCategory === 'uncategorized') params.set('uncategorized', 'true');
-      params.set('archived', 'false'); // Always show non-archived emails
+      params.set('archived', 'false');
 
       const res = await fetch(`/api/emails?${params.toString()}`);
       if (!res.ok) throw new Error('Failed to fetch emails');
@@ -187,15 +170,15 @@ export default function EmailsPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link href="/dashboard">
+              <Link href="/dashboard/accounts">
                 <Button variant="outline" size="sm">
                   <ChevronLeft className="h-4 w-4 mr-2" />
-                  Back
+                  Back to Accounts
                 </Button>
               </Link>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                  Emails
+                  {account?.email || 'Loading...'}
                 </h1>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   {filteredEmails?.length || 0} emails found
@@ -207,50 +190,6 @@ export default function EmailsPage() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Emails</CardTitle>
-              <Mail className="h-4 w-4 text-gray-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.totalEmails || 0}</div>
-              <p className="text-xs text-gray-600 dark:text-gray-400">
-                Across all accounts
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Categorized</CardTitle>
-              <Tag className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.categorizedEmails || 0}</div>
-              <p className="text-xs text-gray-600 dark:text-gray-400">
-                {stats?.totalEmails
-                  ? Math.round((stats.categorizedEmails / stats.totalEmails) * 100)
-                  : 0}% of total
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Uncategorized</CardTitle>
-              <Inbox className="h-4 w-4 text-yellow-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.uncategorizedEmails || 0}</div>
-              <p className="text-xs text-gray-600 dark:text-gray-400">
-                Need processing
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Filters Sidebar */}
           <div className="lg:col-span-1">
@@ -286,29 +225,7 @@ export default function EmailsPage() {
                   </label>
                   <Select
                     value={selectedCategory}
-                    onChange={(e) => {
-                      const newValue = e.target.value;
-                      setSelectedCategory(newValue);
-
-                      // Update URL params
-                      const params = new URLSearchParams(searchParams.toString());
-                      if (newValue === 'all') {
-                        params.delete('categoryId');
-                        params.delete('uncategorized');
-                      } else if (newValue === 'uncategorized') {
-                        params.delete('categoryId');
-                        params.set('uncategorized', 'true');
-                      } else {
-                        params.delete('uncategorized');
-                        params.set('categoryId', newValue);
-                      }
-
-                      // Update URL
-                      const newUrl = params.toString()
-                        ? `/dashboard/emails?${params.toString()}`
-                        : '/dashboard/emails';
-                      router.push(newUrl);
-                    }}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
                   >
                     <option value="all">All Categories</option>
                     <option value="uncategorized">Uncategorized</option>
@@ -450,10 +367,6 @@ export default function EmailsPage() {
                                   <Calendar className="h-3 w-3" />
                                   {new Date(email.receivedAt).toLocaleDateString()}
                                 </div>
-                                <div className="flex items-center gap-1">
-                                  <Mail className="h-3 w-3" />
-                                  {email.gmailAccount.email}
-                                </div>
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
@@ -493,7 +406,7 @@ export default function EmailsPage() {
                 <CardContent className="text-center py-12">
                   <Mail className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                   <p className="text-gray-600 dark:text-gray-400">
-                    No emails found matching your filters.
+                    No emails found for this account.
                   </p>
                 </CardContent>
               </Card>

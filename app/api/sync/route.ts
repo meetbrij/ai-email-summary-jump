@@ -39,6 +39,14 @@ export async function POST(req: NextRequest) {
       select: { id: true, name: true, description: true },
     });
 
+    // Require minimum 2 categories before syncing
+    if (categories.length < 2) {
+      return NextResponse.json(
+        { error: 'Please create at least 2 categories before syncing emails' },
+        { status: 400 }
+      );
+    }
+
     let totalNewEmails = 0;
     let totalProcessed = 0;
     const errors: string[] = [];

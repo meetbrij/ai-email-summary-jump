@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
     const categoryId = searchParams.get('categoryId');
     const uncategorized = searchParams.get('uncategorized') === 'true';
     const archived = searchParams.get('archived') === 'true';
+    const gmailAccountId = searchParams.get('gmailAccountId');
     const limit = parseInt(searchParams.get('limit') || '100');
 
     const where: any = {
@@ -29,6 +30,11 @@ export async function GET(request: NextRequest) {
       },
       archived,
     };
+
+    // Filter by specific Gmail account if provided
+    if (gmailAccountId) {
+      where.gmailAccountId = gmailAccountId;
+    }
 
     if (categoryId) {
       where.categoryId = categoryId;

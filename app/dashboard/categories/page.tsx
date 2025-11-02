@@ -11,7 +11,6 @@ import {
   Tag,
   Plus,
   Edit,
-  Trash2,
   ChevronLeft,
   Save,
   X,
@@ -101,23 +100,6 @@ export default function CategoriesPage() {
     },
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await fetch(`/api/categories/${id}`, {
-        method: 'DELETE',
-      });
-      if (!res.ok) throw new Error('Failed to delete category');
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['categories'] });
-      toast.success('Category deleted successfully');
-    },
-    onError: () => {
-      toast.error('Failed to delete category');
-    },
-  });
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (editingId) {
@@ -141,12 +123,6 @@ export default function CategoriesPage() {
     setIsCreating(false);
     setEditingId(null);
     setFormData({ name: '', description: '', color: COLOR_OPTIONS[0].value });
-  };
-
-  const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this category? Emails will be uncategorized.')) {
-      deleteMutation.mutate(id);
-    }
   };
 
   return (
@@ -303,23 +279,13 @@ export default function CategoriesPage() {
                     <Badge variant="secondary">
                       {category._count?.emails || 0} emails
                     </Badge>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleEdit(category)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleDelete(category.id)}
-                        disabled={deleteMutation.isPending}
-                      >
-                        <Trash2 className="h-4 w-4 text-red-600" />
-                      </Button>
-                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleEdit(category)}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
