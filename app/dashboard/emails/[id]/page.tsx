@@ -145,29 +145,6 @@ export default function EmailDetailPage() {
                 Back to Emails
               </Button>
             </Link>
-            <div className="flex items-center gap-2">
-              {email.archived ? (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => archiveMutation.mutate(false)}
-                  disabled={archiveMutation.isPending}
-                >
-                  <ArchiveRestore className="h-4 w-4 mr-2" />
-                  Unarchive
-                </Button>
-              ) : (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => archiveMutation.mutate(true)}
-                  disabled={archiveMutation.isPending}
-                >
-                  <Archive className="h-4 w-4 mr-2" />
-                  Archive
-                </Button>
-              )}
-            </div>
           </div>
         </div>
       </header>
@@ -176,27 +153,27 @@ export default function EmailDetailPage() {
         {/* Email Header */}
         <Card className="mb-6">
           <CardHeader>
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex-1">
-                <CardTitle className="text-2xl mb-3">{email.subject}</CardTitle>
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+              <div className="flex-1 min-w-0">
+                <CardTitle className="text-2xl mb-3 break-words">{email.subject}</CardTitle>
                 <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4" />
-                    <span className="font-medium">From:</span> {email.from}
+                  <div className="flex items-center gap-2 break-all">
+                    <User className="h-4 w-4 flex-shrink-0" />
+                    <span className="font-medium flex-shrink-0">From:</span> <span className="break-all">{email.from}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4" />
-                    <span className="font-medium">Account:</span>{' '}
-                    {email.gmailAccount.email}
+                  <div className="flex items-center gap-2 break-all">
+                    <Mail className="h-4 w-4 flex-shrink-0" />
+                    <span className="font-medium flex-shrink-0">Account:</span>{' '}
+                    <span className="break-all">{email.gmailAccount.email}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Calendar className="h-4 w-4 flex-shrink-0" />
                     <span className="font-medium">Received:</span>{' '}
-                    {new Date(email.receivedAt).toLocaleString()}
+                    <span>{new Date(email.receivedAt).toLocaleString()}</span>
                   </div>
                 </div>
               </div>
-              {email.archived && <Badge variant="secondary">Archived</Badge>}
+              {email.archived && <Badge variant="secondary" className="flex-shrink-0">Archived</Badge>}
             </div>
 
             {/* Category Selection */}
@@ -205,14 +182,14 @@ export default function EmailDetailPage() {
                 <Tag className="h-4 w-4 inline mr-2" />
                 Category
               </label>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                 <Select
                   value={email.categoryId || ''}
                   onChange={(e) => {
                     const value = e.target.value;
                     updateCategoryMutation.mutate(value === '' ? null : value);
                   }}
-                  className="max-w-xs"
+                  className="w-full sm:max-w-xs"
                 >
                   <option value="">Uncategorized</option>
                   {categories?.map((cat) => (
@@ -271,8 +248,8 @@ export default function EmailDetailPage() {
               <CardTitle className="text-lg">Unsubscribe</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center justify-between">
-                <div>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex-1">
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
                     This email contains an unsubscribe link
                   </p>
@@ -284,8 +261,9 @@ export default function EmailDetailPage() {
                   href={email.unsubscribeLink}
                   target="_blank"
                   rel="noopener noreferrer"
+                  className="w-full sm:w-auto"
                 >
-                  <Button size="sm" variant="outline">
+                  <Button size="sm" variant="outline" className="w-full sm:w-auto">
                     <ExternalLink className="h-4 w-4 mr-2" />
                     Unsubscribe
                   </Button>

@@ -75,8 +75,8 @@ export default function DashboardPage() {
       {/* Header */}
       <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="w-[70vw] sm:w-auto">
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
                 AI Email Sorter
               </h1>
@@ -84,7 +84,7 @@ export default function DashboardPage() {
                 Intelligent email organization dashboard
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
               <Button
                 onClick={handleSync}
                 disabled={isSyncing || !canSync}
@@ -95,8 +95,8 @@ export default function DashboardPage() {
                 <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
                 {isSyncing ? 'Syncing...' : 'Sync Emails'}
               </Button>
-              <Link href="/dashboard/settings">
-                <Button variant="outline" size="sm">
+              <Link href="/dashboard/settings" className="w-full sm:w-auto">
+                <Button variant="outline" size="sm" className="w-full sm:w-auto">
                   <Settings className="h-4 w-4 mr-2" />
                   Settings
                 </Button>

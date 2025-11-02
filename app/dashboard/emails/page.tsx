@@ -396,11 +396,11 @@ function EmailsPageContent() {
             {selectedEmails.size > 0 && (
               <Card className="mb-4 bg-blue-50 dark:bg-blue-900 border-blue-200 dark:border-blue-700">
                 <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
                       {selectedEmails.size} email(s) selected
                     </span>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                       <Button
                         size="sm"
                         variant="outline"
@@ -502,28 +502,28 @@ function EmailsPageContent() {
                         </button>
 
                         {/* Email Content */}
-                        <div className="flex-1">
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="flex-1">
-                              <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-gray-900 dark:text-white mb-1 break-words">
                                 {email.subject}
                               </h3>
-                              <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
-                                <div className="flex items-center gap-1">
-                                  <User className="h-3 w-3" />
-                                  {email.from}
+                              <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-2 sm:gap-3 text-sm text-gray-600 dark:text-gray-400">
+                                <div className="flex items-center gap-1 break-all">
+                                  <User className="h-3 w-3 flex-shrink-0" />
+                                  <span className="break-all">{email.from}</span>
                                 </div>
                                 <div className="flex items-center gap-1">
-                                  <Calendar className="h-3 w-3" />
-                                  {new Date(email.receivedAt).toLocaleDateString()}
+                                  <Calendar className="h-3 w-3 flex-shrink-0" />
+                                  <span>{new Date(email.receivedAt).toLocaleDateString()}</span>
                                 </div>
-                                <div className="flex items-center gap-1">
-                                  <Mail className="h-3 w-3" />
-                                  {email.gmailAccount.email}
+                                <div className="flex items-center gap-1 break-all">
+                                  <Mail className="h-3 w-3 flex-shrink-0" />
+                                  <span className="break-all">{email.gmailAccount.email}</span>
                                 </div>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-shrink-0">
                               {email.category && (
                                 <Badge
                                   style={{

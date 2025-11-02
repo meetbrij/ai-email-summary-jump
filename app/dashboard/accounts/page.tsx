@@ -136,8 +136,8 @@ function AccountsPageContent() {
       {/* Header */}
       <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
               <Link href="/dashboard">
                 <Button variant="outline" size="sm">
                   <ChevronLeft className="h-4 w-4 mr-2" />
@@ -157,6 +157,7 @@ function AccountsPageContent() {
               onClick={handleConnectAccount}
               disabled={isConnecting || (accounts && accounts.length >= 5)}
               title={(accounts && accounts.length >= 5) ? 'Maximum of 5 accounts reached' : ''}
+              className="w-full sm:w-auto"
             >
               <Plus className="h-4 w-4 mr-2" />
               {isConnecting ? 'Connecting...' : 'Add Account'}
@@ -203,19 +204,19 @@ function AccountsPageContent() {
                     href={`/dashboard/accounts/${account.id}`}
                     className="block"
                   >
-                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer">
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center flex-shrink-0">
                           <Mail className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                         </div>
-                        <div>
-                          <h3 className="font-medium text-gray-900 dark:text-white">
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-medium text-gray-900 dark:text-white break-all">
                             {account.email}
                           </h3>
-                          <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
+                          <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
                             <span>{account._count?.emails || 0} emails</span>
                             {account.lastSyncedAt && (
-                              <span>
+                              <span className="break-words">
                                 Last synced:{' '}
                                 {new Date(account.lastSyncedAt).toLocaleString()}
                               </span>
@@ -224,7 +225,7 @@ function AccountsPageContent() {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:flex-shrink-0">
                         {account.isActive ? (
                           <Badge variant="success" className="flex items-center gap-1">
                             <CheckCircle className="h-3 w-3" />
