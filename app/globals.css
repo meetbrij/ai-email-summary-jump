@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+:root {
+  --primary: 220 13% 28%; /* Dark gray */
+  --primary-foreground: 0 0% 100%; /* White */
+}
+
+.dark {
+  --primary: 220 13% 28%; /* Same dark gray for dark mode */
+  --primary-foreground: 0 0% 100%; /* White */
+}
+
 body {
   font-family: Arial, Helvetica, sans-serif;
 }
