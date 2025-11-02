@@ -4,10 +4,11 @@ import type { NextRequest } from 'next/server';
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Allow access to login page, auth routes, and static files
+  // Allow access to login page, auth routes, cron jobs, and static files
   if (
     pathname.startsWith('/login') ||
     pathname.startsWith('/api/auth') ||
+    pathname.startsWith('/api/cron') ||
     pathname.startsWith('/_next') ||
     pathname === '/favicon.ico'
   ) {
