@@ -15,7 +15,10 @@ export function middleware(req: NextRequest) {
   }
 
   // Check if session cookie exists
-  const sessionToken = req.cookies.get('next-auth.session-token');
+  // In production (HTTPS), NextAuth uses __Secure- prefix
+  const sessionToken =
+    req.cookies.get('__Secure-next-auth.session-token') ||
+    req.cookies.get('next-auth.session-token');
 
   // If no session cookie, redirect to login
   if (!sessionToken) {
