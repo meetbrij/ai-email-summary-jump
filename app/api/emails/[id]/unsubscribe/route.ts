@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { unsubscribeEmail } from '@/lib/unsubscribe-agent';
 
 export const dynamic = 'force-dynamic';
+
+// Increase timeout for this route (browser automation can take time)
+export const maxDuration = 60; // 60 seconds
 
 export async function POST(
   request: NextRequest,
@@ -35,12 +39,15 @@ export async function POST(
       },
     });
 
-    if (!email) {
+    if (!email || !email.unsubscribeLink) {
       return NextResponse.json(
         { error: 'Email not found or has no unsubscribe link' },
         { status: 404 }
       );
     }
+
+    console.log(`\n[Unsubscribe API] Starting unsubscribe for email ${email.id}`);
+    console.log(`[Unsubscribe API] Unsubscribe URL: ${email.unsubscribeLink}`);
 
     // Create unsubscribe attempt
     const attempt = await prisma.unsubscribeAttempt.create({
@@ -51,22 +58,59 @@ export async function POST(
       },
     });
 
-    // In a real implementation, you would trigger a background job here
-    // to actually perform the unsubscribe action (e.g., using a queue system)
-    // For now, we'll just create the attempt record
+    console.log(`[Unsubscribe API] Created attempt ${attempt.id}`);
 
-    // Example: You could use a library like 'bull' or 'agenda' to queue the job
-    // await unsubscribeQueue.add({ attemptId: attempt.id, emailId: email.id });
+    // Execute unsubscribe automation
+    try {
+      const result = await unsubscribeEmail(email.unsubscribeLink, attempt.id);
 
-    return NextResponse.json({
-      success: true,
-      attemptId: attempt.id,
-      message: 'Unsubscribe attempt initiated',
-    });
-  } catch (error) {
-    console.error('Error initiating unsubscribe:', error);
+      // Update attempt with result
+      const updatedAttempt = await prisma.unsubscribeAttempt.update({
+        where: { id: attempt.id },
+        data: {
+          status: result.success ? 'success' : 'failed',
+          method: result.method,
+          errorMessage: result.error || null,
+          screenshotPath: result.screenshotPaths?.after || result.screenshotPaths?.before || null,
+          completedAt: new Date(),
+        },
+      });
+
+      console.log(`[Unsubscribe API] Attempt ${attempt.id} completed: ${result.success ? 'SUCCESS' : 'FAILED'}`);
+      console.log(`[Unsubscribe API] Method: ${result.method}`);
+      console.log(`[Unsubscribe API] Message: ${result.message}`);
+
+      return NextResponse.json({
+        success: result.success,
+        attemptId: updatedAttempt.id,
+        method: result.method,
+        message: result.message,
+        screenshotPaths: result.screenshotPaths,
+      });
+    } catch (automationError: any) {
+      console.error(`[Unsubscribe API] Automation error:`, automationError);
+
+      // Update attempt as failed
+      await prisma.unsubscribeAttempt.update({
+        where: { id: attempt.id },
+        data: {
+          status: 'failed',
+          errorMessage: automationError.message || 'Unknown automation error',
+          completedAt: new Date(),
+        },
+      });
+
+      return NextResponse.json({
+        success: false,
+        attemptId: attempt.id,
+        message: `Automation failed: ${automationError.message}`,
+        error: automationError.message,
+      });
+    }
+  } catch (error: any) {
+    console.error('[Unsubscribe API] Error:', error);
     return NextResponse.json(
-      { error: 'Failed to initiate unsubscribe' },
+      { error: 'Failed to initiate unsubscribe', details: error.message },
       { status: 500 }
     );
   }

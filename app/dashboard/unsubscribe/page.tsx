@@ -103,8 +103,8 @@ export default function UnsubscribePage() {
       {/* Header */}
       <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
               <Link href="/dashboard">
                 <Button variant="outline" size="sm">
                   <ChevronLeft className="h-4 w-4 mr-2" />
@@ -126,7 +126,7 @@ export default function UnsubscribePage() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
@@ -238,77 +238,82 @@ export default function UnsubscribePage() {
               return (
                 <Card key={email.id}>
                   <CardContent className="p-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
-                          {email.subject}
-                        </h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                          From: {email.from}
-                        </p>
-                        <div className="flex items-center gap-3 text-xs text-gray-500">
-                          <span>
-                            Received: {new Date(email.receivedAt).toLocaleDateString()}
-                          </span>
-                          {email.unsubscribeMethod && (
-                            <Badge variant="secondary" className="text-xs">
-                              Method: {email.unsubscribeMethod}
-                            </Badge>
-                          )}
-                        </div>
-
-                        {latestAttempt && (
-                          <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
-                            <div className="flex items-center gap-2 mb-1">
-                              {status === 'success' && (
-                                <CheckCircle className="h-4 w-4 text-green-500" />
-                              )}
-                              {status === 'failed' && (
-                                <XCircle className="h-4 w-4 text-red-500" />
-                              )}
-                              {status === 'pending' && (
-                                <Clock className="h-4 w-4 text-yellow-500" />
-                              )}
-                              <span className="text-sm font-medium">
-                                Last attempt:{' '}
-                                {new Date(latestAttempt.attemptedAt).toLocaleString()}
-                              </span>
-                            </div>
-                            {latestAttempt.errorMessage && (
-                              <p className="text-xs text-red-600 dark:text-red-400">
-                                {latestAttempt.errorMessage}
-                              </p>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-gray-900 dark:text-white mb-1 break-words">
+                            {email.subject}
+                          </h3>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 break-all">
+                            From: {email.from}
+                          </p>
+                          <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-2 sm:gap-3 text-xs text-gray-500">
+                            <span>
+                              Received: {new Date(email.receivedAt).toLocaleDateString()}
+                            </span>
+                            {email.unsubscribeMethod && (
+                              <Badge variant="secondary" className="text-xs">
+                                Method: {email.unsubscribeMethod}
+                              </Badge>
                             )}
                           </div>
-                        )}
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {status === 'success' && (
+                            <Badge variant="success">Unsubscribed</Badge>
+                          )}
+                        </div>
                       </div>
 
-                      <div className="flex items-center gap-2 ml-4">
-                        {status === 'success' ? (
-                          <Badge variant="success">Unsubscribed</Badge>
-                        ) : (
-                          <>
-                            <a
-                              href={email.unsubscribeLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              <Button size="sm" variant="outline">
-                                <ExternalLink className="h-4 w-4 mr-2" />
-                                Manual
-                              </Button>
-                            </a>
-                            <Button
-                              size="sm"
-                              onClick={() => unsubscribeMutation.mutate(email.id)}
-                              disabled={unsubscribeMutation.isPending || status === 'pending'}
-                            >
-                              <TrendingUp className="h-4 w-4 mr-2" />
-                              Auto Unsubscribe
+                      {latestAttempt && (
+                        <div className="mb-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                          <div className="flex items-center gap-2 mb-1">
+                            {status === 'success' && (
+                              <CheckCircle className="h-4 w-4 text-green-500" />
+                            )}
+                            {status === 'failed' && (
+                              <XCircle className="h-4 w-4 text-red-500" />
+                            )}
+                            {status === 'pending' && (
+                              <Clock className="h-4 w-4 text-yellow-500" />
+                            )}
+                            <span className="text-sm font-medium">
+                              Last attempt:{' '}
+                              {new Date(latestAttempt.attemptedAt).toLocaleString()}
+                            </span>
+                          </div>
+                          {latestAttempt.errorMessage && (
+                            <p className="text-xs text-red-600 dark:text-red-400 break-words">
+                              {latestAttempt.errorMessage}
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {status !== 'success' && (
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-3 border-t border-gray-200 dark:border-gray-700">
+                          <a
+                            href={email.unsubscribeLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full sm:w-auto"
+                          >
+                            <Button size="sm" variant="outline" className="w-full sm:w-auto">
+                              <ExternalLink className="h-4 w-4 mr-2" />
+                              Manual
                             </Button>
-                          </>
-                        )}
-                      </div>
+                          </a>
+                          <Button
+                            size="sm"
+                            onClick={() => unsubscribeMutation.mutate(email.id)}
+                            disabled={unsubscribeMutation.isPending || status === 'pending'}
+                            className="w-full sm:w-auto"
+                          >
+                            <TrendingUp className="h-4 w-4 mr-2" />
+                            Auto Unsubscribe
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

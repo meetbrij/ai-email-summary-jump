@@ -21,6 +21,7 @@ import {
   Square,
   Inbox,
   Tag,
+  MailX,
 } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
@@ -174,6 +175,43 @@ function EmailsPageContent() {
     },
   });
 
+  const bulkUnsubscribeMutation = useMutation({
+    mutationFn: async (emailIds: string[]) => {
+      const res = await fetch('/api/emails/bulk-unsubscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emailIds }),
+      });
+      if (!res.ok) throw new Error('Failed to unsubscribe from emails');
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['emails'] });
+      setSelectedEmails(new Set());
+
+      if (data.succeeded > 0 && data.failed === 0) {
+        toast.success(`Successfully unsubscribed from ${data.succeeded} email(s)`);
+      } else if (data.succeeded > 0 && data.failed > 0) {
+        toast.success(
+          `Unsubscribed from ${data.succeeded} email(s). ${data.failed} failed.`,
+          { duration: 5000 }
+        );
+      } else {
+        toast.error(`Failed to unsubscribe from all ${data.failed} email(s)`);
+      }
+
+      if (data.skipped > 0) {
+        toast.error(
+          `${data.skipped} email(s) skipped (no unsubscribe link)`,
+          { duration: 4000 }
+        );
+      }
+    },
+    onError: (error: any) => {
+      toast.error('Failed to process bulk unsubscribe');
+    },
+  });
+
   const handleSelectAll = () => {
     if (selectedEmails.size === filteredEmails?.length) {
       setSelectedEmails(new Set());
@@ -200,6 +238,23 @@ function EmailsPageContent() {
 
   const confirmDelete = () => {
     bulkDeleteMutation.mutate(Array.from(selectedEmails));
+  };
+
+  const handleBulkUnsubscribe = () => {
+    if (selectedEmails.size > 0) {
+      // Show loading toast
+      toast.loading(`Processing ${selectedEmails.size} unsubscribe request(s)...`, {
+        id: 'bulk-unsubscribe',
+        duration: Infinity,
+      });
+
+      bulkUnsubscribeMutation.mutate(Array.from(selectedEmails), {
+        onSettled: () => {
+          // Dismiss loading toast
+          toast.dismiss('bulk-unsubscribe');
+        },
+      });
+    }
   };
 
   const filteredEmails = emails?.filter((email) => {
@@ -240,7 +295,7 @@ function EmailsPageContent() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Emails</CardTitle>
@@ -394,7 +449,7 @@ function EmailsPageContent() {
           <div className="lg:col-span-3">
             {/* Bulk Actions Toolbar */}
             {selectedEmails.size > 0 && (
-              <Card className="mb-4 bg-blue-50 dark:bg-blue-900 border-blue-200 dark:border-blue-700">
+              <Card className="sticky top-0 z-10 mb-4 bg-blue-50 dark:bg-blue-900 border-blue-200 dark:border-blue-700">
                 <CardContent className="p-4">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
@@ -404,9 +459,14 @@ function EmailsPageContent() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => setSelectedEmails(new Set())}
+                        onClick={handleBulkUnsubscribe}
+                        disabled={bulkUnsubscribeMutation.isPending}
+                        className="bg-white dark:bg-gray-800"
                       >
-                        Clear Selection
+                        <MailX className="h-4 w-4 mr-2" />
+                        {bulkUnsubscribeMutation.isPending
+                          ? 'Unsubscribing...'
+                          : 'Unsubscribe Selection'}
                       </Button>
                       <Button
                         size="sm"

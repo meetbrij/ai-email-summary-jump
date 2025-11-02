@@ -19,6 +19,7 @@ import {
   Trash2,
   CheckSquare,
   Square,
+  MailX,
 } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
@@ -125,6 +126,43 @@ export default function AccountEmailsPage() {
     },
   });
 
+  const bulkUnsubscribeMutation = useMutation({
+    mutationFn: async (emailIds: string[]) => {
+      const res = await fetch('/api/emails/bulk-unsubscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emailIds }),
+      });
+      if (!res.ok) throw new Error('Failed to unsubscribe from emails');
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['emails'] });
+      setSelectedEmails(new Set());
+
+      if (data.succeeded > 0 && data.failed === 0) {
+        toast.success(`Successfully unsubscribed from ${data.succeeded} email(s)`);
+      } else if (data.succeeded > 0 && data.failed > 0) {
+        toast.success(
+          `Unsubscribed from ${data.succeeded} email(s). ${data.failed} failed.`,
+          { duration: 5000 }
+        );
+      } else {
+        toast.error(`Failed to unsubscribe from all ${data.failed} email(s)`);
+      }
+
+      if (data.skipped > 0) {
+        toast.error(
+          `${data.skipped} email(s) skipped (no unsubscribe link)`,
+          { duration: 4000 }
+        );
+      }
+    },
+    onError: (error: any) => {
+      toast.error('Failed to process bulk unsubscribe');
+    },
+  });
+
   const handleSelectAll = () => {
     if (selectedEmails.size === filteredEmails?.length) {
       setSelectedEmails(new Set());
@@ -153,6 +191,23 @@ export default function AccountEmailsPage() {
     bulkDeleteMutation.mutate(Array.from(selectedEmails));
   };
 
+  const handleBulkUnsubscribe = () => {
+    if (selectedEmails.size > 0) {
+      // Show loading toast
+      toast.loading(`Processing ${selectedEmails.size} unsubscribe request(s)...`, {
+        id: 'bulk-unsubscribe',
+        duration: Infinity,
+      });
+
+      bulkUnsubscribeMutation.mutate(Array.from(selectedEmails), {
+        onSettled: () => {
+          // Dismiss loading toast
+          toast.dismiss('bulk-unsubscribe');
+        },
+      });
+    }
+  };
+
   const filteredEmails = emails?.filter((email) => {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
@@ -168,8 +223,8 @@ export default function AccountEmailsPage() {
       {/* Header */}
       <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
               <Link href="/dashboard/accounts">
                 <Button variant="outline" size="sm">
                   <ChevronLeft className="h-4 w-4 mr-2" />
@@ -244,19 +299,24 @@ export default function AccountEmailsPage() {
           <div className="lg:col-span-3">
             {/* Bulk Actions Toolbar */}
             {selectedEmails.size > 0 && (
-              <Card className="mb-4 bg-blue-50 dark:bg-blue-900 border-blue-200 dark:border-blue-700">
+              <Card className="sticky top-0 z-10 mb-4 bg-blue-50 dark:bg-blue-900 border-blue-200 dark:border-blue-700">
                 <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
                       {selectedEmails.size} email(s) selected
                     </span>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => setSelectedEmails(new Set())}
+                        onClick={handleBulkUnsubscribe}
+                        disabled={bulkUnsubscribeMutation.isPending}
+                        className="bg-white dark:bg-gray-800"
                       >
-                        Clear Selection
+                        <MailX className="h-4 w-4 mr-2" />
+                        {bulkUnsubscribeMutation.isPending
+                          ? 'Unsubscribing...'
+                          : 'Unsubscribe Selection'}
                       </Button>
                       <Button
                         size="sm"
@@ -352,24 +412,24 @@ export default function AccountEmailsPage() {
                         </button>
 
                         {/* Email Content */}
-                        <div className="flex-1">
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="flex-1">
-                              <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-gray-900 dark:text-white mb-1 break-words">
                                 {email.subject}
                               </h3>
-                              <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
-                                <div className="flex items-center gap-1">
-                                  <User className="h-3 w-3" />
-                                  {email.from}
+                              <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-2 sm:gap-3 text-sm text-gray-600 dark:text-gray-400">
+                                <div className="flex items-center gap-1 break-all">
+                                  <User className="h-3 w-3 flex-shrink-0" />
+                                  <span className="break-all">{email.from}</span>
                                 </div>
                                 <div className="flex items-center gap-1">
-                                  <Calendar className="h-3 w-3" />
-                                  {new Date(email.receivedAt).toLocaleDateString()}
+                                  <Calendar className="h-3 w-3 flex-shrink-0" />
+                                  <span>{new Date(email.receivedAt).toLocaleDateString()}</span>
                                 </div>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-shrink-0">
                               {email.category && (
                                 <Badge
                                   style={{

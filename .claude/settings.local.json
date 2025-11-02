@@ -14,7 +14,8 @@
       "Bash(unset:*)",
       "Bash(psql:*)",
       "Bash(lsof:*)",
-      "Bash(test:*)"
+      "Bash(test:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []
