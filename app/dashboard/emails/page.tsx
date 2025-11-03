@@ -182,8 +182,11 @@ function EmailsPageContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ emailIds }),
       });
-      if (!res.ok) throw new Error('Failed to unsubscribe from emails');
-      return res.json();
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || data.error || 'Failed to unsubscribe from emails');
+      }
+      return data;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['emails'] });
@@ -196,8 +199,16 @@ function EmailsPageContent() {
           `Unsubscribed from ${data.succeeded} email(s). ${data.failed} failed.`,
           { duration: 5000 }
         );
-      } else {
-        toast.error(`Failed to unsubscribe from all ${data.failed} email(s)`);
+      } else if (data.failed > 0) {
+        // Show specific error if all emails failed with the same reason
+        const failedResults = data.results?.filter((r: any) => !r.success) || [];
+        const uniqueErrors = [...new Set(failedResults.map((r: any) => r.message))];
+
+        if (uniqueErrors.length === 1 && uniqueErrors[0]) {
+          toast.error(uniqueErrors[0], { duration: 6000 });
+        } else {
+          toast.error(`Failed to unsubscribe from ${data.failed} email(s). Check the Unsubscribe page for details.`, { duration: 5000 });
+        }
       }
 
       if (data.skipped > 0) {
@@ -207,8 +218,8 @@ function EmailsPageContent() {
         );
       }
     },
-    onError: (error: any) => {
-      toast.error('Failed to process bulk unsubscribe');
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to process bulk unsubscribe');
     },
   });
 

@@ -14,7 +14,7 @@ An AI-powered email management application that automatically classifies and sum
 - 📊 **Dashboard Analytics** - Track total, categorized, and uncategorized emails
 - 🔕 **Unsubscribe Detection** - Automatically extract unsubscribe links from emails
 - 🗑️ **Bulk Actions** - Delete multiple emails at once from both app and Gmail
-- 🌙 **Dark Mode Support** - Full dark mode CSS (toggle UI coming soon)
+- 🌙 **Dark Mode Support** - Full dark mode CSS
 - 📱 **Responsive Design** - Mobile-first UI built with Tailwind CSS
 
 ### Security Features
@@ -370,7 +370,6 @@ npm run dev
 - **Bulk unsubscribe operations**
 
 ### In Progress 🚧
-- Dark mode toggle UI
 - Final polish and optimization
 
 ### Planned 📅

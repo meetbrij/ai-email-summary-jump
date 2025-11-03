@@ -55,15 +55,22 @@ export default function UnsubscribePage() {
       const res = await fetch(`/api/emails/${emailId}/unsubscribe`, {
         method: 'POST',
       });
-      if (!res.ok) throw new Error('Failed to unsubscribe');
-      return res.json();
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || data.error || 'Failed to unsubscribe');
+      }
+      return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['unsubscribe-emails'] });
-      toast.success('Unsubscribe initiated');
+      if (data.success) {
+        toast.success(data.message || 'Successfully unsubscribed');
+      } else {
+        toast.warning(data.message || 'Unsubscribe completed with issues');
+      }
     },
-    onError: () => {
-      toast.error('Failed to unsubscribe');
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to unsubscribe');
     },
   });
 
@@ -283,9 +290,16 @@ export default function UnsubscribePage() {
                             </span>
                           </div>
                           {latestAttempt.errorMessage && (
-                            <p className="text-xs text-red-600 dark:text-red-400 break-words">
-                              {latestAttempt.errorMessage}
-                            </p>
+                            <div className="mt-2">
+                              <p className="text-xs text-red-600 dark:text-red-400 break-words">
+                                {latestAttempt.errorMessage}
+                              </p>
+                              {status === 'failed' && (
+                                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                                  💡 Use the "Unsubscribe Manually" button below to complete this action.
+                                </p>
+                              )}
+                            </div>
                           )}
                         </div>
                       )}
@@ -297,10 +311,11 @@ export default function UnsubscribePage() {
                             target="_blank"
                             rel="noopener noreferrer"
                             className="w-full sm:w-auto"
+                            title="Open unsubscribe page manually (required for services like Netflix, Gmail, etc.)"
                           >
                             <Button size="sm" variant="outline" className="w-full sm:w-auto">
                               <ExternalLink className="h-4 w-4 mr-2" />
-                              Manual
+                              Unsubscribe Manually
                             </Button>
                           </a>
                           <Button
