@@ -153,10 +153,10 @@ export default function AccountEmailsPage() {
       } else if (data.failed > 0) {
         // Show specific error if all emails failed with the same reason
         const failedResults = data.results?.filter((r: any) => !r.success) || [];
-        const uniqueErrors = [...new Set(failedResults.map((r: any) => r.message))];
+        const uniqueErrors = [...new Set(failedResults.map((r: any) => r.message).filter(Boolean))];
 
         if (uniqueErrors.length === 1 && uniqueErrors[0]) {
-          toast.error(uniqueErrors[0], { duration: 6000 });
+          toast.error(String(uniqueErrors[0]), { duration: 6000 });
         } else {
           toast.error(`Failed to unsubscribe from ${data.failed} email(s). Check the Unsubscribe page for details.`, { duration: 5000 });
         }

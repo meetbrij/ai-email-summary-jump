@@ -66,7 +66,7 @@ export default function UnsubscribePage() {
       if (data.success) {
         toast.success(data.message || 'Successfully unsubscribed');
       } else {
-        toast.warning(data.message || 'Unsubscribe completed with issues');
+        toast.error(data.message || 'Unsubscribe completed with issues', { duration: 5000 });
       }
     },
     onError: (error: Error) => {

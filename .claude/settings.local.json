@@ -19,7 +19,8 @@
       "Bash(npm test:*)",
       "Bash(npm run test:coverage:*)",
       "Bash(npm run test:*)",
-      "Bash(kill:*)"
+      "Bash(kill:*)",
+      "Bash(xargs kill:*)"
     ],
     "deny": [],
     "ask": []
