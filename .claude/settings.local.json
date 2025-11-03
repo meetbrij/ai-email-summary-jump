@@ -15,7 +15,10 @@
       "Bash(psql:*)",
       "Bash(lsof:*)",
       "Bash(test:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(npm test:*)",
+      "Bash(npm run test:coverage:*)",
+      "Bash(npm run test:*)"
     ],
     "deny": [],
     "ask": []
