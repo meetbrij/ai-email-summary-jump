@@ -36,6 +36,19 @@ An AI-powered email management application that automatically classifies and sum
 - **APIs**: Gmail API (with rate limiting via p-queue)
 - **Deployment**: Render (Web Service + PostgreSQL)
 
+## 🚀 Live Demo
+
+The application is deployed and running at:
+**https://ai-email-summary-jump.onrender.com**
+
+**Features:**
+- Automated email sync every 30 minutes via cron job
+- Multi-account Gmail support (up to 5 accounts)
+- AI-powered email classification and summarization
+- Automated unsubscribe detection with Playwright
+
+**Note:** First-time access may take 30-60 seconds as Render spins up the service from sleep mode.
+
 ## Prerequisites
 
 Before you begin, ensure you have the following installed:
@@ -294,13 +307,21 @@ npx prisma migrate reset
 
 3. **Update Google OAuth**
    - Add production redirect URIs to Google Cloud Console:
-     - `https://your-app.onrender.com/api/auth/callback/google`
-     - `https://your-app.onrender.com/api/gmail/callback`
+     - `https://ai-email-summary-jump.onrender.com/api/auth/callback/google`
+     - `https://ai-email-summary-jump.onrender.com/api/gmail/callback`
 
 4. **Update Environment Variables**
-   - Set `NEXTAUTH_URL` to `https://your-app.onrender.com`
-   - Set `APP_URL` to `https://your-app.onrender.com`
+   - Set `NEXTAUTH_URL` to `https://ai-email-summary-jump.onrender.com`
+   - Set `APP_URL` to `https://ai-email-summary-jump.onrender.com`
    - Set `NODE_ENV` to `production`
+
+5. **Configure Cron Job** (Optional but Recommended)
+   - Go to Render Dashboard → Your Web Service → Settings
+   - Add a Cron Job with the following settings:
+     - **Name**: Email Sync
+     - **Schedule**: `*/30 * * * *` (every 30 minutes)
+     - **Command**: `curl -X POST https://ai-email-summary-jump.onrender.com/api/sync`
+     - **Description**: Automatically sync emails from all connected Gmail accounts
 
 ## Common Issues
 
@@ -342,18 +363,22 @@ npm run dev
 - Bulk delete functionality
 - Unsubscribe link detection
 - Dark mode CSS
+- **Playwright unsubscribe automation** (3-tier system)
+- **Comprehensive test suite** (84 tests passing with Jest + React Testing Library)
+- **Production deployment on Render** (https://ai-email-summary-jump.onrender.com)
+- **Automated email sync via cron job** (runs every 30 minutes)
+- **Bulk unsubscribe operations**
 
 ### In Progress 🚧
-- Playwright unsubscribe automation
-- Bulk recategorize endpoint
 - Dark mode toggle UI
+- Final polish and optimization
 
 ### Planned 📅
-- Comprehensive test suite (Jest + React Testing Library)
 - Email templates and canned responses
-- Schedule sync (cron jobs)
 - Export emails to CSV
 - Advanced analytics dashboard
+- Email forwarding rules
+- Smart notifications
 
 ## Contributing
 
