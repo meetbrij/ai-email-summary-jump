@@ -19,14 +19,28 @@ COPY . .
 # Generate Prisma client
 RUN npx prisma generate
 
-# Build Next.js application
+# Set dummy environment variables for build (required by Next.js)
+# Real values will be provided at runtime by Render
+ARG DATABASE_URL=postgresql://dummy:dummy@localhost:5432/dummy
+ARG NEXTAUTH_SECRET=dummy-build-secret-min-32-chars-long-12345
+ARG OPENAI_API_KEY=sk-dummy-build-key
+ARG GOOGLE_CLIENT_ID=dummy
+ARG GOOGLE_CLIENT_SECRET=dummy
+ARG ENCRYPTION_KEY=dummy-encryption-key-min-32-chars
+
+# Build Next.js application with dummy env vars
+ENV DATABASE_URL=$DATABASE_URL \
+    NEXTAUTH_SECRET=$NEXTAUTH_SECRET \
+    OPENAI_API_KEY=$OPENAI_API_KEY \
+    GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID \
+    GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET \
+    ENCRYPTION_KEY=$ENCRYPTION_KEY \
+    NODE_ENV=production
+
 RUN npm run build
 
 # Expose port (Render assigns this dynamically)
 EXPOSE 3000
 
-# Set environment to production
-ENV NODE_ENV=production
-
-# Start the application
+# Start the application (real env vars from Render will override build-time dummies)
 CMD ["sh", "-c", "npx prisma migrate deploy && npm start"]
